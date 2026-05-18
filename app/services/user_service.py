@@ -2,7 +2,7 @@ from sqlalchemy.orm import Session
 from app.models.user import User
 from app.core.security import get_password_hash, verify_password
 
-def create_user(db: Session, username: str, password: str, role="user"):
+def create_user(db: Session, username: str, password: str, role: str):
     hashed = get_password_hash(password)
     user = User(
         username=username,

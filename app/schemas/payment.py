@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Literal
 from pydantic import BaseModel
 
 class PaymentBase(BaseModel):
@@ -6,6 +7,12 @@ class PaymentBase(BaseModel):
     to_user_id: int 
     date: datetime
     value: int
+    type: Literal[
+        "payment",
+        "excess_payment",
+        "debt",
+        "regulacja"
+    ] = "payment"
 
 class PaymentCreate(PaymentBase):
     pass

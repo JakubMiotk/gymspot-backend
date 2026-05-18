@@ -1,3 +1,4 @@
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -13,5 +14,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+os.makedirs("uploads/video", exist_ok=True)
 app.mount("/avatars", StaticFiles(directory="uploads/avatars"), name="avatars")
+app.mount("/video", StaticFiles(directory="uploads/video"), name="video")
 app.include_router(api_router, prefix="/api/v1")

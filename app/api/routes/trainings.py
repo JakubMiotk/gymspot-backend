@@ -3,9 +3,10 @@ from sqlalchemy.orm import Session
 from typing import List
 
 from app.db.session import get_db
-from app.schemas.training import TrainingCreate, TrainingDateUpdate, TrainingOut, TrainingStatusUpdate
+from app.schemas.training import TrainingCompletionPreview, TrainingCreate, TrainingDateUpdate, TrainingOut, TrainingStatusUpdate
 from app.services.training_service import (
     create_training,
+    get_available_excess_for_training,
     get_training,
     get_trainings_by_status,
     get_trainings_for_client,
@@ -32,6 +33,15 @@ def read_training(
     if not training:
         raise HTTPException(status_code=404, detail="Nie znaleziono treningu")
     return training
+
+@router.get("/{training_id}/completion-preview", response_model=TrainingCompletionPreview)
+def read_training_completion_preview(
+    training_id: int,
+    db: Session = Depends(get_db)):
+    available_excess = get_available_excess_for_training(db, training_id)
+    if available_excess is None:
+        raise HTTPException(status_code=404, detail="Nie znaleziono treningu")
+    return TrainingCompletionPreview(available_excess=available_excess)
 
 @router.put("/{training_id}", response_model=TrainingOut)
 def update_existing_training(
@@ -62,12 +72,17 @@ def change_training_status(
     training_id: int,
     status: TrainingStatusUpdate,
     db: Session = Depends(get_db)):
-    training = update_training_status(
-        db,
-        training_id,
-        status=status.status,
-        is_paid=status.is_paid
-    )
+    try:
+        training = update_training_status(
+            db,
+            training_id,
+            status=status.status,
+            payment_training_type=status.payment_training_type,
+            use_excess_payment=status.use_excess_payment,
+            use_debt_settlement=status.use_debt_settlement,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
 
     if not training:
         raise HTTPException(status_code=404, detail="Nie znaleziono treningu")

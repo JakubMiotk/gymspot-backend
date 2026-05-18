@@ -5,7 +5,10 @@ class UserBase(BaseModel):
 
 class UserCreate(UserBase):
     password: str
-    role: str = "user"
+    role: str
+
+class UserLogin(UserBase):
+    password: str
 
 class UserOut(BaseModel):
     id: int

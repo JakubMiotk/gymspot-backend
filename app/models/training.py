@@ -1,7 +1,16 @@
-from sqlalchemy import Column, DateTime, Boolean, Enum, Integer, ForeignKey, String
+from sqlalchemy import Column, DateTime, Enum, Integer, ForeignKey, String
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.db.base import Base
+
+TRAINING_STATUSES = (
+    "planned",
+    "started",
+    "canceled",
+    "missed",
+    "completed_paid",
+    "completed_unpaid",
+)
 
 
 class Training(Base):
@@ -15,8 +24,7 @@ class Training(Base):
     created_at = Column(DateTime, server_default=func.now(), nullable=False)
     training_date = Column(DateTime, nullable=False)
 
-    status = Column(Enum("planned", "completed", "canceled", "started", name="training_status"), default="pending", nullable=False)
-    is_paid = Column(Boolean, default=False, nullable=False)
+    status = Column(Enum(*TRAINING_STATUSES, name="training_status"), default="planned", nullable=False)
     note = Column(String(255), nullable=True)
 
     exercises = relationship(

@@ -2,7 +2,9 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
 
+from app.core.deps import get_current_user
 from app.db.session import get_db
+from app.models.user import User
 from app.schemas.payment import PaymentCreate, PaymentOut
 from app.services.payment_service import (
     new_payment,
@@ -19,8 +21,10 @@ router = APIRouter(tags=["payments"])
 @router.post("/", response_model=PaymentOut)
 def create_payment(
     payment: PaymentCreate,
-    db: Session = Depends(get_db)):
-    return new_payment(db, payment)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)):
+    payment_data = payment.model_copy(update={"from_user_id": current_user.id})
+    return new_payment(db, payment_data)
 
 # Pobranie wszystkich płatności
 @router.get("/", response_model=List[PaymentOut])
@@ -32,8 +36,9 @@ def read_all_payments(
 @router.get("/user/{user_id}", response_model=List[PaymentOut])
 def read_payments_for_user(
     user_id: int,
-    db: Session = Depends(get_db)):
-    return get_payments_by_user_id(db, user_id)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)):
+    return get_payments_by_user_id(db, current_user.id)
 
 
 # Aktualizacja płatności
@@ -41,8 +46,10 @@ def read_payments_for_user(
 def update_existing_payment(
     payment_id: int,
     payment_data: PaymentCreate,
-    db: Session = Depends(get_db)):
-    payment = update_payment(db, payment_id, payment_data)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)):
+    payment_payload = payment_data.model_copy(update={"from_user_id": current_user.id})
+    payment = update_payment(db, payment_id, payment_payload)
 
     if not payment:
         raise HTTPException(status_code=404, detail="Nie znaleziono płatności")

@@ -25,13 +25,20 @@ def get_current_user(
             settings.SECRET_KEY,
             algorithms=[settings.ALGORITHM]
         )
-        username: str = payload.get("sub")
-        if username is None:
+        username: str | None = payload.get("sub")
+        user_id: int | None = payload.get("user_id")
+
+        if username is None and user_id is None:
             raise credentials_exception
     except JWTError:
         raise credentials_exception
 
-    user = db.query(User).filter(User.username == username).first()
+    user = None
+    if user_id is not None:
+        user = db.query(User).filter(User.id == user_id).first()
+    if not user and username is not None:
+        user = db.query(User).filter(User.username == username).first()
+
     if not user:
         raise credentials_exception
 

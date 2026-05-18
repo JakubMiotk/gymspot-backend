@@ -1,6 +1,6 @@
 import os
 from fastapi import APIRouter
-from app.api.routes import auth, users, persons, relations, trainings, measurements, payments, scan
+from app.api.routes import auth, users, persons, relations, trainings, measurements, payments, scan, debts, excess_payments, documentation
 
 api_router = APIRouter()
 
@@ -13,3 +13,6 @@ api_router.include_router(trainings.router, prefix="/trainings", tags=["training
 api_router.include_router(measurements.router, prefix="/measurements", tags=["measurements"])
 api_router.include_router(payments.router, prefix="/payments", tags=["payments"])
 api_router.include_router(scan.router, prefix="/scan", tags=["scan"])
+api_router.include_router(debts.router, prefix="/debts", tags=["debts"])
+api_router.include_router(excess_payments.router, prefix="/excess-payments", tags=["excess_payments"])
+api_router.include_router(documentation.router, tags=["documentation"])
