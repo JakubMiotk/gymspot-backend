@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session, selectinload
-from datetime import datetime, timedelta
+from datetime import datetime
 from app.models.training import Training
 from app.models.training_exercise import TrainingExercise
 from app.models.exercise_set import ExerciseSet
@@ -85,38 +85,33 @@ def get_training(db: Session, training_id: int):
         .first()
     )
 
-def _get_week_window(week_offset: int) -> tuple[datetime, datetime]:
-    safe_week_offset = max(week_offset, 0)
-    window_end = datetime.utcnow() - timedelta(days=7 * safe_week_offset)
-    window_start = window_end - timedelta(days=7)
-    return window_start, window_end
-
-
-def get_trainings_for_client(db: Session, client_id: int, week_offset: int = 0):
-    window_start, window_end = _get_week_window(week_offset)
+def get_trainings_for_client(db: Session, client_id: int, offset: int = 0, limit: int = 30):
+    safe_offset = max(offset, 0)
+    safe_limit = max(1, min(limit, 100))
     return (
         db.query(Training)
         .options(
             selectinload(Training.exercises).selectinload(TrainingExercise.sets)
         )
         .filter(Training.client_id == client_id)
-        .filter(Training.training_date >= window_start)
-        .filter(Training.training_date < window_end)
         .order_by(Training.training_date.desc())
+        .offset(safe_offset)
+        .limit(safe_limit)
         .all()
     )
 
-def get_trainings_for_trainer(db: Session, trainer_id: int, week_offset: int = 0):
-    window_start, window_end = _get_week_window(week_offset)
+def get_trainings_for_trainer(db: Session, trainer_id: int, offset: int = 0, limit: int = 30):
+    safe_offset = max(offset, 0)
+    safe_limit = max(1, min(limit, 100))
     return (
         db.query(Training)
         .options(
             selectinload(Training.exercises).selectinload(TrainingExercise.sets)
         )
         .filter(Training.trainer_id == trainer_id)
-        .filter(Training.training_date >= window_start)
-        .filter(Training.training_date < window_end)
         .order_by(Training.training_date.desc())
+        .offset(safe_offset)
+        .limit(safe_limit)
         .all()
     )
 

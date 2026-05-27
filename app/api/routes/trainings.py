@@ -57,16 +57,18 @@ def update_existing_training(
 @router.get("/client/{client_id}", response_model=List[TrainingOut])
 def read_trainings_for_client(
     client_id: int,
-    week_offset: int = 0,
+    offset: int = 0,
+    limit: int = 30,
     db: Session = Depends(get_db)):
-    return get_trainings_for_client(db, client_id, week_offset=week_offset)
+    return get_trainings_for_client(db, client_id, offset=offset, limit=limit)
 
 @router.get("/trainer/{trainer_id}", response_model=List[TrainingOut])
 def read_trainings_for_trainer(
     trainer_id: int,
-    week_offset: int = 0,
+    offset: int = 0,
+    limit: int = 30,
     db: Session = Depends(get_db)):
-    return get_trainings_for_trainer(db, trainer_id, week_offset=week_offset)
+    return get_trainings_for_trainer(db, trainer_id, offset=offset, limit=limit)
 
 
 @router.patch("/{training_id}/status", response_model=TrainingOut)
