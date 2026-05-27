@@ -1,4 +1,4 @@
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 from datetime import datetime
 from app.models.training import Training
 from app.models.training_exercise import TrainingExercise
@@ -76,16 +76,47 @@ def update_training(db: Session, training_id: int, training_data: TrainingCreate
     return training
 
 def get_training(db: Session, training_id: int):
-    return db.query(Training).filter(Training.id == training_id).first()
+    return (
+        db.query(Training)
+        .options(
+            selectinload(Training.exercises).selectinload(TrainingExercise.sets)
+        )
+        .filter(Training.id == training_id)
+        .first()
+    )
 
 def get_trainings_for_client(db: Session, client_id: int):
-    return db.query(Training).filter(Training.client_id == client_id).all()
+    return (
+        db.query(Training)
+        .options(
+            selectinload(Training.exercises).selectinload(TrainingExercise.sets)
+        )
+        .filter(Training.client_id == client_id)
+        .order_by(Training.training_date.desc())
+        .all()
+    )
 
 def get_trainings_for_trainer(db: Session, trainer_id: int):
-    return db.query(Training).filter(Training.trainer_id == trainer_id).all()
+    return (
+        db.query(Training)
+        .options(
+            selectinload(Training.exercises).selectinload(TrainingExercise.sets)
+        )
+        .filter(Training.trainer_id == trainer_id)
+        .order_by(Training.training_date.desc())
+        .all()
+    )
 
 def get_trainings_by_status(db: Session, status: str):
-    return db.query(Training).filter(Training.status == status).all()
+    return (
+        db.query(Training)
+        .options(
+            selectinload(Training.exercises).selectinload(TrainingExercise.sets)
+        )
+        .filter(Training.status == status)
+        .order_by(Training.training_date.desc())
+        .all()
+    )
 
 
 def get_available_excess_for_training(db: Session, training_id: int):
