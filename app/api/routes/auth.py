@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from app.schemas.user import UserCreate, UserOut, UserLogin
 from app.schemas.auth import Token
@@ -15,9 +15,25 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
     return create_user(db, user.username, user.password, user.role)
 
 @router.post("/login", response_model=Token)
-def login(user: UserLogin, db: Session = Depends(get_db)):
-    db_user = get_user_by_username(db, user.username)
-    if not db_user or not verify_password(user.password, db_user.hashed_password):
+async def login(request: Request, db: Session = Depends(get_db)):
+    username: str | None = None
+    password: str | None = None
+
+    content_type = request.headers.get("content-type", "")
+    if "application/x-www-form-urlencoded" in content_type:
+        form = await request.form()
+        username = form.get("username")
+        password = form.get("password")
+    else:
+        payload = await request.json()
+        username = payload.get("username")
+        password = payload.get("password")
+
+    if not username or not password:
+        raise HTTPException(status_code=422, detail="Wymagane pola: username i password")
+
+    db_user = get_user_by_username(db, username)
+    if not db_user or not verify_password(password, db_user.hashed_password):
         raise HTTPException(status_code=400, detail="Nieprawidłowy login lub hasło")
     
     token = create_access_token({
