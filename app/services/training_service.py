@@ -1,19 +1,93 @@
 from sqlalchemy.orm import Session, selectinload
 from datetime import datetime
+
 from app.models.training import Training
 from app.models.training_exercise import TrainingExercise
 from app.models.exercise_set import ExerciseSet
+from app.models.exercise import Exercise
+
 from app.models.payment import Payment
 from app.models.excess_payments import ExcessPayment
 from app.models.debts import Debt
+
 from app.schemas.training import TrainingCreate
-from app.services.excess_payment_service import consume_excess_payment, consume_all_excess
-from app.services.debt_service import upsert_increment_debt, consume_debt, consume_all_debt, get_current_debt_value
+
+from app.services.excess_payment_service import (
+    consume_excess_payment,
+    consume_all_excess
+)
+from app.services.debt_service import (
+    upsert_increment_debt,
+    consume_debt,
+    consume_all_debt,
+    get_current_debt_value
+)
 
 TRAINING_PRICES = {
     "personal": 80,
     "group": 40,
 }
+
+# =========================
+# MAPPING EXERCISES
+# =========================
+
+def _map_training_exercises_with_names(db: Session, training: Training):
+    exercise_ids = [e.exercise_id for e in training.exercises]
+
+    if not exercise_ids:
+        return []
+
+    exercises = (
+        db.query(Exercise)
+        .filter(Exercise.id.in_(exercise_ids))
+        .all()
+    )
+
+    exercise_map = {e.id: e.exercise_name for e in exercises}
+
+    result = []
+    for ex in training.exercises:
+        result.append({
+            "id": ex.id,
+            "exercise_id": ex.exercise_id,
+            "exercise_name": exercise_map.get(ex.exercise_id),
+            "supersets_group": ex.supersets_group,
+            "exercise_order": ex.exercise_order,
+            "sets": [
+                {
+                    "id": s.id,
+                    "set_number": s.set_number,
+                    "weight": s.weight,
+                    "reps": s.reps,
+                    "tempo": s.tempo,
+                    "rest_seconds": s.rest_seconds,
+                }
+                for s in ex.sets
+            ]
+        })
+
+    return result
+
+
+def _map_trainings_list(db: Session, trainings):
+    return [
+        {
+            "id": t.id,
+            "trainer_id": t.trainer_id,
+            "client_id": t.client_id,
+            "training_date": t.training_date,
+            "note": t.note,
+            "status": t.status,
+            "exercises": _map_training_exercises_with_names(db, t),
+        }
+        for t in trainings
+    ]
+
+
+# =========================
+# CORE TRAINING LOGIC
+# =========================
 
 def _add_exercises_to_training(db: Session, training_id: int, training_data: TrainingCreate):
     for exercise_data in training_data.exercises:
@@ -38,6 +112,10 @@ def _add_exercises_to_training(db: Session, training_id: int, training_data: Tra
             )
             db.add(exercise_set)
 
+
+# =========================
+# CREATE / UPDATE
+# =========================
 
 def create_training(db: Session, training_data: TrainingCreate):
     training = Training(
@@ -66,6 +144,7 @@ def update_training(db: Session, training_id: int, training_data: TrainingCreate
     training.client_id = training_data.client_id
     training.training_date = training_data.training_date
     training.note = training_data.note
+
     training.exercises.clear()
     db.flush()
 
@@ -75,23 +154,45 @@ def update_training(db: Session, training_id: int, training_data: TrainingCreate
     db.refresh(training)
     return training
 
+
+# =========================
+# GETTERS (WITH MAPPING)
+# =========================
+
 def get_training(db: Session, training_id: int):
-    return (
+    training = (
         db.query(Training)
         .options(
-            selectinload(Training.exercises).selectinload(TrainingExercise.sets)
+            selectinload(Training.exercises)
+            .selectinload(TrainingExercise.sets)
         )
         .filter(Training.id == training_id)
         .first()
     )
 
+    if not training:
+        return None
+
+    return {
+        "id": training.id,
+        "trainer_id": training.trainer_id,
+        "client_id": training.client_id,
+        "training_date": training.training_date,
+        "note": training.note,
+        "status": training.status,
+        "exercises": _map_training_exercises_with_names(db, training),
+    }
+
+
 def get_trainings_for_client(db: Session, client_id: int, offset: int = 0, limit: int = 30):
     safe_offset = max(offset, 0)
     safe_limit = max(1, min(limit, 100))
-    return (
+
+    trainings = (
         db.query(Training)
         .options(
-            selectinload(Training.exercises).selectinload(TrainingExercise.sets)
+            selectinload(Training.exercises)
+            .selectinload(TrainingExercise.sets)
         )
         .filter(Training.client_id == client_id)
         .order_by(Training.training_date.desc())
@@ -100,13 +201,18 @@ def get_trainings_for_client(db: Session, client_id: int, offset: int = 0, limit
         .all()
     )
 
+    return _map_trainings_list(db, trainings)
+
+
 def get_trainings_for_trainer(db: Session, trainer_id: int, offset: int = 0, limit: int = 30):
     safe_offset = max(offset, 0)
     safe_limit = max(1, min(limit, 100))
-    return (
+
+    trainings = (
         db.query(Training)
         .options(
-            selectinload(Training.exercises).selectinload(TrainingExercise.sets)
+            selectinload(Training.exercises)
+            .selectinload(TrainingExercise.sets)
         )
         .filter(Training.trainer_id == trainer_id)
         .order_by(Training.training_date.desc())
@@ -115,122 +221,27 @@ def get_trainings_for_trainer(db: Session, trainer_id: int, offset: int = 0, lim
         .all()
     )
 
+    return _map_trainings_list(db, trainings)
+
+
 def get_trainings_by_status(db: Session, status: str):
-    return (
+    trainings = (
         db.query(Training)
         .options(
-            selectinload(Training.exercises).selectinload(TrainingExercise.sets)
+            selectinload(Training.exercises)
+            .selectinload(TrainingExercise.sets)
         )
         .filter(Training.status == status)
         .order_by(Training.training_date.desc())
         .all()
     )
 
-
-def get_available_excess_for_training(db: Session, training_id: int):
-    training = db.query(Training).filter(Training.id == training_id).first()
-    if not training:
-        return None
-
-    available_excess = db.query(ExcessPayment).filter(
-        ExcessPayment.user_id == training.client_id
-    ).all()
-
-    return sum(payment.value for payment in available_excess)
+    return _map_trainings_list(db, trainings)
 
 
-def update_training_status(
-    db: Session,
-    training_id: int,
-    status: str | None = None,
-    payment_training_type: str | None = None,
-    use_excess_payment: bool = False,
-    use_debt_settlement: bool = False,
-):
-    training = db.query(Training).filter(Training.id == training_id).first()
-    if not training:
-        return None
-
-    should_charge_training = status == "completed_paid" and training.status != "completed_paid"
-    should_debt_training = status == "completed_unpaid" and training.status != "completed_unpaid"
-
-    if should_charge_training:
-        if payment_training_type not in TRAINING_PRICES:
-            raise ValueError("Wybierz typ treningu do rozliczenia")
-
-        training_price = TRAINING_PRICES[payment_training_type]
-
-        if use_excess_payment:
-            if consume_excess_payment(db, training.client_id, training_price):
-                pass  # full excess used, no remainder
-            else:
-                consumed = consume_all_excess(db, training.client_id)
-                remainder = training_price - consumed
-                if remainder > 0:
-                    upsert_increment_debt(db, training.client_id, remainder)
-        else:
-            if use_debt_settlement:
-                current_debt = get_current_debt_value(db, training.client_id)
-                if current_debt >= training_price:
-                    consume_debt(db, training.client_id, training_price)
-                    payment = Payment(
-                        from_user_id=training.client_id,
-                        to_user_id=training.trainer_id,
-                        date=datetime.utcnow(),
-                        value=training_price,
-                        type="regulacja",
-                    )
-                    db.add(payment)
-                elif current_debt > 0:
-                    consume_all_debt(db, training.client_id)
-                    payment_regulacja = Payment(
-                        from_user_id=training.client_id,
-                        to_user_id=training.trainer_id,
-                        date=datetime.utcnow(),
-                        value=current_debt,
-                        type="regulacja",
-                    )
-                    db.add(payment_regulacja)
-                    payment_rest = Payment(
-                        from_user_id=training.client_id,
-                        to_user_id=training.trainer_id,
-                        date=datetime.utcnow(),
-                        value=training_price - current_debt,
-                        type="payment",
-                    )
-                    db.add(payment_rest)
-                else:
-                    payment = Payment(
-                        from_user_id=training.client_id,
-                        to_user_id=training.trainer_id,
-                        date=datetime.utcnow(),
-                        value=training_price,
-                        type="payment",
-                    )
-                    db.add(payment)
-            else:
-                payment = Payment(
-                    from_user_id=training.client_id,
-                    to_user_id=training.trainer_id,
-                    date=datetime.utcnow(),
-                    value=training_price,
-                    type="payment",
-                )
-                db.add(payment)
-
-    if should_debt_training:
-        if payment_training_type not in TRAINING_PRICES:
-            raise ValueError("Wybierz typ treningu do rozliczenia")
-
-        training_price = TRAINING_PRICES[payment_training_type]
-        upsert_increment_debt(db, training.client_id, training_price)
-
-    if status is not None:
-        training.status = status
-
-    db.commit()
-    db.refresh(training)
-    return training
+# =========================
+# DELETE
+# =========================
 
 def delete_training(db: Session, training_id: int):
     training = db.query(Training).filter(Training.id == training_id).first()
@@ -239,6 +250,11 @@ def delete_training(db: Session, training_id: int):
         db.commit()
         return True
     return False
+
+
+# =========================
+# DATE UPDATE
+# =========================
 
 def update_training_date(db: Session, training_id: int, training_date):
     training = db.query(Training).filter(Training.id == training_id).first()
@@ -249,4 +265,3 @@ def update_training_date(db: Session, training_id: int, training_date):
     db.commit()
     db.refresh(training)
     return training
-
