@@ -3,7 +3,7 @@ from app.db.base import Base
 from sqlalchemy.orm import relationship
 
 
-class TrainingExercise(Base):
+class Exercise(Base):
     __tablename__ = "exercises"
 
     id = Column(Integer, primary_key=True, index=True)
