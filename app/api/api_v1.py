@@ -1,6 +1,7 @@
 import os
 from fastapi import APIRouter
 from app.api.routes import auth, users, persons, relations, trainings, measurements, payments, scan, debts, excess_payments, documentation, notifications
+from backend.app.api.routes import exercises
 
 api_router = APIRouter()
 
@@ -17,3 +18,4 @@ api_router.include_router(debts.router, prefix="/debts", tags=["debts"])
 api_router.include_router(excess_payments.router, prefix="/excess-payments", tags=["excess_payments"])
 api_router.include_router(documentation.router, tags=["documentation"])
 api_router.include_router(notifications.router, prefix="/notifications", tags=["notifications"])
+api_router.include_router(exercises.router, prefix="/exercises", tags=["exercises"])
