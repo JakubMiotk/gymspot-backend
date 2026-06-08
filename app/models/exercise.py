@@ -8,4 +8,4 @@ class Exercise(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     exercise_name = Column(String(255), nullable=False)
-    documented_exercise_id = Column(Integer, ForeignKey("documented_exercises.id"), nullable=True)
+    documented_exercise_id = Column(Integer, ForeignKey("documentation.id"), nullable=True)
