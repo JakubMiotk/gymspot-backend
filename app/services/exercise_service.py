@@ -1,4 +1,5 @@
 import os
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 from app.models.exercise import Exercise
 from app.core.security import get_password_hash, verify_password
@@ -41,5 +42,7 @@ def delete_exercise(db: Session, exercise_id: int):
     return False
 
 def get_exercise_name(db: Session, exercise_name: str):
-    return db.query(Exercise).filter(Exercise.exercise_name.strip().lower()== exercise_name.strip().lower()).first()
+    return db.query(Exercise).filter(
+    func.lower(Exercise.exercise_name) == exercise_name.strip().lower()
+).first()
     
