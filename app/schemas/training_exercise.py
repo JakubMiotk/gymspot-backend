@@ -4,7 +4,7 @@ from app.schemas.exercise_sets import ExerciseSetBase, ExerciseSetOut
 
 
 class TrainingExerciseBase(BaseModel):
-    exercise_name: str
+    exercise_id: str
     supersets_group: Optional[int] = None
     exercise_order: int
 
@@ -15,6 +15,8 @@ class TrainingExerciseOut(TrainingExerciseBase):
     id: int
     training_id: int
     sets: List[ExerciseSetOut] = []
+    exercise_name: Optional[str] = None
+    documented_exercise_id: Optional[int] = None
 
     class Config:
         from_attributes = True

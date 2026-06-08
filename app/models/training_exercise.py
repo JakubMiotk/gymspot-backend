@@ -10,7 +10,7 @@ class TrainingExercise(Base):
 
     training_id = Column(Integer, ForeignKey("trainings.id"), nullable=False)
 
-    exercise_name = Column(String(255), nullable=False)
+    exercise_id = Column(Integer, ForeignKey("exercises.id"), nullable=True)
     supersets_group = Column(String(50), nullable=True)
     exercise_order = Column(Integer, nullable=False)
 

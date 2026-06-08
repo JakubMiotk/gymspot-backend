@@ -19,7 +19,7 @@ def _add_exercises_to_training(db: Session, training_id: int, training_data: Tra
     for exercise_data in training_data.exercises:
         exercise = TrainingExercise(
             training_id=training_id,
-            exercise_name=exercise_data.exercise_name,
+            exercise_id=exercise_data.exercise_id,
             supersets_group=exercise_data.supersets_group,
             exercise_order=exercise_data.exercise_order
         )
