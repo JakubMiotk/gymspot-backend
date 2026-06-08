@@ -1,7 +1,6 @@
 import os
 from fastapi import APIRouter
-from app.api.routes import auth, users, persons, relations, trainings, measurements, payments, scan, debts, excess_payments, documentation, notifications
-from backend.app.api.routes import exercises
+from app.api.routes import auth, users, persons, relations, trainings, measurements, payments, scan, debts, excess_payments, documentation, notifications, exercises
 
 api_router = APIRouter()
 
