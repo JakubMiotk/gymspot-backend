@@ -34,7 +34,7 @@ def read_all_exercises(
     return get_exercises(db)
 
 # Pobranie ćwiczenia po ID
-@router.get("/{exercise_id}", response_model=ExerciseOut)
+@router.get("/id/{exercise_id}", response_model=ExerciseOut)
 def read_exercise_by_id(
     exercise_id: int,
     db: Session = Depends(get_db),
