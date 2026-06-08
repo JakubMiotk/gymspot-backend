@@ -4,7 +4,7 @@ from app.schemas.exercise_sets import ExerciseSetBase, ExerciseSetOut
 
 
 class TrainingExerciseBase(BaseModel):
-    exercise_id: str
+    exercise_id: int
     supersets_group: Optional[int] = None
     exercise_order: int
 
