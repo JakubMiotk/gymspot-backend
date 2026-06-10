@@ -239,6 +239,112 @@ def get_trainings_by_status(db: Session, status: str):
     return _map_trainings_list(db, trainings)
 
 
+def get_available_excess_for_training(db: Session, training_id: int):
+    training = db.query(Training).filter(Training.id == training_id).first()
+    if not training:
+        return None
+
+    available_excess = (
+        db.query(ExcessPayment)
+        .filter(ExcessPayment.user_id == training.client_id)
+        .all()
+    )
+
+    return sum(payment.value for payment in available_excess)
+
+
+def update_training_status(
+    db: Session,
+    training_id: int,
+    status: str | None = None,
+    payment_training_type: str | None = None,
+    use_excess_payment: bool = False,
+    use_debt_settlement: bool = False,
+):
+    training = db.query(Training).filter(Training.id == training_id).first()
+    if not training:
+        return None
+
+    should_charge_training = status == "completed_paid" and training.status != "completed_paid"
+    should_debt_training = status == "completed_unpaid" and training.status != "completed_unpaid"
+
+    if should_charge_training:
+        if payment_training_type not in TRAINING_PRICES:
+            raise ValueError("Wybierz typ treningu do rozliczenia")
+
+        training_price = TRAINING_PRICES[payment_training_type]
+
+        if use_excess_payment:
+            if not consume_excess_payment(db, training.client_id, training_price):
+                consumed = consume_all_excess(db, training.client_id)
+                remainder = training_price - consumed
+                if remainder > 0:
+                    upsert_increment_debt(db, training.client_id, remainder)
+        else:
+            if use_debt_settlement:
+                current_debt = get_current_debt_value(db, training.client_id)
+                if current_debt >= training_price:
+                    consume_debt(db, training.client_id, training_price)
+                    payment = Payment(
+                        from_user_id=training.client_id,
+                        to_user_id=training.trainer_id,
+                        date=datetime.utcnow(),
+                        value=training_price,
+                        type="regulacja",
+                    )
+                    db.add(payment)
+                elif current_debt > 0:
+                    consume_all_debt(db, training.client_id)
+                    payment_regulacja = Payment(
+                        from_user_id=training.client_id,
+                        to_user_id=training.trainer_id,
+                        date=datetime.utcnow(),
+                        value=current_debt,
+                        type="regulacja",
+                    )
+                    db.add(payment_regulacja)
+                    payment_rest = Payment(
+                        from_user_id=training.client_id,
+                        to_user_id=training.trainer_id,
+                        date=datetime.utcnow(),
+                        value=training_price - current_debt,
+                        type="payment",
+                    )
+                    db.add(payment_rest)
+                else:
+                    payment = Payment(
+                        from_user_id=training.client_id,
+                        to_user_id=training.trainer_id,
+                        date=datetime.utcnow(),
+                        value=training_price,
+                        type="payment",
+                    )
+                    db.add(payment)
+            else:
+                payment = Payment(
+                    from_user_id=training.client_id,
+                    to_user_id=training.trainer_id,
+                    date=datetime.utcnow(),
+                    value=training_price,
+                    type="payment",
+                )
+                db.add(payment)
+
+    if should_debt_training:
+        if payment_training_type not in TRAINING_PRICES:
+            raise ValueError("Wybierz typ treningu do rozliczenia")
+
+        training_price = TRAINING_PRICES[payment_training_type]
+        upsert_increment_debt(db, training.client_id, training_price)
+
+    if status is not None:
+        training.status = status
+
+    db.commit()
+    db.refresh(training)
+    return training
+
+
 # =========================
 # DELETE
 # =========================
