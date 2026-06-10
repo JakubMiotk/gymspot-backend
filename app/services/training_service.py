@@ -1,3 +1,4 @@
+from sqlalchemy import func
 from sqlalchemy.orm import Session, selectinload
 from datetime import datetime
 
@@ -92,11 +93,52 @@ def _map_trainings_list(db: Session, trainings):
 # CORE TRAINING LOGIC
 # =========================
 
-def _add_exercises_to_training(db: Session, training_id: int, training_data: TrainingCreate):
+def _resolve_or_create_exercise_id(
+    db: Session,
+    exercise_name: str | None,
+    fallback_exercise_id: int | None = None,
+):
+    normalized_name = (exercise_name or "").strip()
+
+    if normalized_name:
+        existing_exercise = (
+            db.query(Exercise)
+            .filter(func.lower(Exercise.exercise_name) == normalized_name.lower())
+            .first()
+        )
+
+        if existing_exercise:
+            return existing_exercise.id
+
+        new_exercise = Exercise(exercise_name=normalized_name)
+        db.add(new_exercise)
+        db.flush()
+        return new_exercise.id
+
+    if fallback_exercise_id is not None:
+        return fallback_exercise_id
+
+    raise ValueError("Każde ćwiczenie musi zawierać exercise_name lub exercise_id")
+
+def _add_exercises_to_training(
+    db: Session,
+    training_id: int,
+    training_data: TrainingCreate,
+    resolve_exercise_ids: bool = False,
+):
     for exercise_data in training_data.exercises:
+        resolved_exercise_id = exercise_data.exercise_id
+
+        if resolve_exercise_ids:
+            resolved_exercise_id = _resolve_or_create_exercise_id(
+                db,
+                exercise_name=exercise_data.exercise_name,
+                fallback_exercise_id=exercise_data.exercise_id,
+            )
+
         exercise = TrainingExercise(
             training_id=training_id,
-            exercise_id=exercise_data.exercise_id,
+            exercise_id=resolved_exercise_id,
             supersets_group=exercise_data.supersets_group,
             exercise_order=exercise_data.exercise_order
         )
@@ -151,7 +193,12 @@ def update_training(db: Session, training_id: int, training_data: TrainingCreate
     training.exercises.clear()
     db.flush()
 
-    _add_exercises_to_training(db, training.id, training_data)
+    _add_exercises_to_training(
+        db,
+        training.id,
+        training_data,
+        resolve_exercise_ids=True,
+    )
 
     db.commit()
     db.refresh(training)

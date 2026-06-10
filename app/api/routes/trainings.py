@@ -49,7 +49,11 @@ def update_existing_training(
     training: TrainingCreate,
     db: Session = Depends(get_db)
 ):
-    updated_training = update_training(db, training_id, training)
+    try:
+        updated_training = update_training(db, training_id, training)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
     if not updated_training:
         raise HTTPException(status_code=404, detail="Nie znaleziono treningu")
     return updated_training
