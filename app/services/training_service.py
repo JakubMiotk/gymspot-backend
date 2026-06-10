@@ -50,6 +50,7 @@ def _map_training_exercises_with_names(db: Session, training: Training):
     for ex in training.exercises:
         result.append({
             "id": ex.id,
+            "training_id": ex.training_id,
             "exercise_id": ex.exercise_id,
             "exercise_name": exercise_map.get(ex.exercise_id),
             "supersets_group": ex.supersets_group,
@@ -57,6 +58,7 @@ def _map_training_exercises_with_names(db: Session, training: Training):
             "sets": [
                 {
                     "id": s.id,
+                    "training_exercise_id": s.training_exercise_id,
                     "set_number": s.set_number,
                     "weight": s.weight,
                     "reps": s.reps,
@@ -76,6 +78,7 @@ def _map_trainings_list(db: Session, trainings):
             "id": t.id,
             "trainer_id": t.trainer_id,
             "client_id": t.client_id,
+            "created_at": t.created_at,
             "training_date": t.training_date,
             "note": t.note,
             "status": t.status,
@@ -177,6 +180,7 @@ def get_training(db: Session, training_id: int):
         "id": training.id,
         "trainer_id": training.trainer_id,
         "client_id": training.client_id,
+        "created_at": training.created_at,
         "training_date": training.training_date,
         "note": training.note,
         "status": training.status,
