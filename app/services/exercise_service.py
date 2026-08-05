@@ -43,6 +43,6 @@ def delete_exercise(db: Session, exercise_id: int):
 
 def get_exercise_name(db: Session, exercise_name: str):
     return db.query(Exercise).filter(
-    func.lower(Exercise.exercise_name) == exercise_name
+    func.lower(Exercise.exercise_name) == exercise_name.lower()
 ).first()
     

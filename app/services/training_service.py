@@ -23,10 +23,20 @@ from app.services.debt_service import (
     consume_all_debt,
     get_current_debt_value
 )
+from app.services.notification_service import send_push_notification_to_user
 
 TRAINING_PRICES = {
     "personal": 80,
     "group": 40,
+}
+
+TRAINING_STATUS_LABELS = {
+    "planned": "Zaplanowany",
+    "started": "Rozpoczęty",
+    "canceled": "Odwołany",
+    "missed": "Nieodbyty",
+    "completed_paid": "Zakończony - Opłacony",
+    "completed_unpaid": "Zakończony - Nieopłacony",
 }
 
 # =========================
@@ -316,6 +326,8 @@ def update_training_status(
     if not training:
         return None
 
+    previous_status = training.status
+
     should_charge_training = status == "completed_paid" and training.status != "completed_paid"
     should_debt_training = status == "completed_unpaid" and training.status != "completed_unpaid"
 
@@ -393,6 +405,26 @@ def update_training_status(
 
     db.commit()
     db.refresh(training)
+
+    if status is not None and previous_status != training.status:
+        current_status_label = TRAINING_STATUS_LABELS.get(training.status, training.status)
+        formatted_date = training.training_date.strftime("%d.%m.%Y %H:%M")
+        notification_body = (
+            f"Twój trening zaplanowany na {formatted_date} ma teraz status: {current_status_label}."
+        )
+
+        # Notification failure cannot block business flow of status update.
+        try:
+            send_push_notification_to_user(
+                db,
+                user_id=training.client_id,
+                title="Zmiana statusu treningu",
+                body=notification_body,
+                url="/app/trainings",
+            )
+        except Exception:
+            pass
+
     return training
 
 
