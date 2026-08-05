@@ -187,6 +187,19 @@ def create_training(db: Session, training_data: TrainingCreate):
 
     db.commit()
     db.refresh(training)
+
+    formatted_date = training.training_date.strftime("%d.%m.%Y %H:%M")
+    try:
+        send_push_notification_to_user(
+            db,
+            user_id=training.client_id,
+            title="Nowy trening",
+            body=f"Dodano nowy trening na {formatted_date}.",
+            url="/app/trainings",
+        )
+    except Exception:
+        pass
+
     return training
 
 

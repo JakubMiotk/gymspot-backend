@@ -2,6 +2,7 @@ import os
 from sqlalchemy.orm import Session
 from app.schemas.debt import DebtCreate
 from app.models.debts import Debt
+from app.services.notification_service import send_push_notification_to_user
 
 def upsert_increment_debt(db: Session, user_id: int, amount: int):
     debt = db.query(Debt).filter(Debt.user_id == user_id).first()
@@ -48,6 +49,18 @@ def new_debt(db: Session, payment_data: DebtCreate):
     db.add(debt)
     db.commit()
     db.refresh(debt)
+
+    try:
+        send_push_notification_to_user(
+            db,
+            user_id=debt.user_id,
+            title="Nowy dług",
+            body=f"Dodano dług: {debt.value} zł.",
+            url=f"/app/profile/{debt.user_id}/payments",
+        )
+    except Exception:
+        pass
+
     return debt
 
 def get_debt_by_user_id(db: Session, user_id: int):

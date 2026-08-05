@@ -2,6 +2,7 @@ import os
 from sqlalchemy.orm import Session
 from app.schemas.excess_payment import ExcessPaymentCreate
 from app.models.excess_payments import ExcessPayment 
+from app.services.notification_service import send_push_notification_to_user
 
 
 def upsert_increment_excess_payment(db: Session, user_id: int, amount: int):
@@ -44,6 +45,18 @@ def new_excess_payment(db: Session, payment_data: ExcessPaymentCreate):
     db.add(excess_payment)
     db.commit()
     db.refresh(excess_payment)
+
+    try:
+        send_push_notification_to_user(
+            db,
+            user_id=excess_payment.user_id,
+            title="Nowa nadpłata",
+            body=f"Dodano nadpłatę: {excess_payment.value} zł.",
+            url=f"/app/profile/{excess_payment.user_id}/payments",
+        )
+    except Exception:
+        pass
+
     return excess_payment
 
 def get_excess_payment_by_user_id(db: Session, user_id: int):
