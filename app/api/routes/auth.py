@@ -1,10 +1,11 @@
 from datetime import datetime, timedelta, timezone
-from math import ceil
 from threading import Lock
+from math import ceil
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
-from app.schemas.user import UserCreate, UserOut, UserLogin
+
+from app.schemas.user import UserCreate, UserOut
 from app.schemas.auth import Token
 from app.services.user_service import create_user, get_user_by_username
 from app.core.security import verify_password, create_access_token
@@ -12,115 +13,265 @@ from app.db.session import get_db
 
 router = APIRouter()
 
-MAX_FAILED_LOGINS = 3
-LOCKOUT_MINUTES = 10
 
-_login_attempts_lock = Lock()
-_login_attempts: dict[str, dict[str, datetime | int]] = {}
+# ============================================================
+# LOGIN PROTECTION
+# ============================================================
+
+# Po każdym błędnym haśle zwiększamy opóźnienie:
+#
+# 1 -> 1s
+# 2 -> 2s
+# 3 -> 4s
+# 4 -> 8s
+# 5 -> 16s
+# 6 -> 32s
+# 7+ -> 60s
+#
+# Dzięki temu nie blokujemy konta całkowicie.
+MAX_LOGIN_DELAY = 60
+
+# Limit requestów z jednego IP.
+IP_RATE_LIMIT = 20
+IP_RATE_WINDOW = timedelta(minutes=1)
 
 
-def _reset_login_attempts(username: str) -> None:
-    with _login_attempts_lock:
-        _login_attempts.pop(username, None)
+_login_lock = Lock()
+
+# username -> liczba ostatnich błędnych logowań
+_failed_logins: dict[str, int] = {}
+
+# IP -> timestampy requestów
+_ip_requests: dict[str, list[datetime]] = {}
 
 
-def _is_locked(username: str) -> int | None:
+# ============================================================
+# HELPERS
+# ============================================================
+
+def _normalize_username(username: str) -> str:
+    return username.strip().lower()
+
+
+def _reset_failed_logins(username: str) -> None:
+    username = _normalize_username(username)
+
+    with _login_lock:
+        _failed_logins.pop(username, None)
+
+
+def _get_login_delay(username: str) -> int:
+    """
+    Zwraca aktualne opóźnienie przed kolejną próbą.
+    """
+    username = _normalize_username(username)
+
+    with _login_lock:
+        failed_count = _failed_logins.get(username, 0)
+
+    if failed_count <= 0:
+        return 0
+
+    return min(
+        2 ** (failed_count - 1),
+        MAX_LOGIN_DELAY,
+    )
+
+
+def _register_failed_login(username: str) -> None:
+    username = _normalize_username(username)
+
+    with _login_lock:
+        current = _failed_logins.get(username, 0)
+
+        _failed_logins[username] = current + 1
+
+
+def _check_ip_rate_limit(ip: str) -> int | None:
+    """
+    Zwraca liczbę sekund do ponowienia requestu,
+    albo None jeśli request może zostać wykonany.
+    """
+
     now = datetime.now(timezone.utc)
 
-    with _login_attempts_lock:
-        state = _login_attempts.get(username)
-        if not state:
-            return None
+    with _login_lock:
+        requests = _ip_requests.get(ip, [])
 
-        locked_until = state.get("locked_until")
-        if not isinstance(locked_until, datetime):
-            return None
+        # usuwamy stare requesty
+        requests = [
+            timestamp
+            for timestamp in requests
+            if now - timestamp < IP_RATE_WINDOW
+        ]
 
-        if locked_until <= now:
-            _login_attempts.pop(username, None)
-            return None
+        if len(requests) >= IP_RATE_LIMIT:
+            oldest = requests[0]
 
-        seconds_left = (locked_until - now).total_seconds()
-        return max(1, ceil(seconds_left / 60))
+            retry_after = ceil(
+                (
+                    IP_RATE_WINDOW
+                    - (now - oldest)
+                ).total_seconds()
+            )
+
+            _ip_requests[ip] = requests
+
+            return max(1, retry_after)
+
+        requests.append(now)
+
+        _ip_requests[ip] = requests
+
+        return None
 
 
-def _register_failed_attempt(username: str) -> tuple[bool, int]:
-    now = datetime.now(timezone.utc)
-
-    with _login_attempts_lock:
-        state = _login_attempts.get(username)
-        failed_count = 0
-
-        if state and isinstance(state.get("failed_count"), int):
-            failed_count = int(state["failed_count"])
-
-        failed_count += 1
-
-        if failed_count >= MAX_FAILED_LOGINS:
-            locked_until = now + timedelta(minutes=LOCKOUT_MINUTES)
-            _login_attempts[username] = {
-                "failed_count": 0,
-                "locked_until": locked_until,
-            }
-            return True, LOCKOUT_MINUTES
-
-        _login_attempts[username] = {
-            "failed_count": failed_count,
-        }
-        return False, failed_count
+# ============================================================
+# REGISTER
+# ============================================================
 
 @router.post("/register", response_model=UserOut)
-def register(user: UserCreate, db: Session = Depends(get_db)):
+def register(
+    user: UserCreate,
+    db: Session = Depends(get_db),
+):
     if get_user_by_username(db, user.username):
-        raise HTTPException(status_code=400, detail="Nazwa użytkownika jest już zajęta")
-    return create_user(db, user.username, user.password, user.role)
+        raise HTTPException(
+            status_code=400,
+            detail="Nazwa użytkownika jest już zajęta",
+        )
+
+    return create_user(
+        db,
+        user.username,
+        user.password,
+        user.role,
+    )
+
+
+# ============================================================
+# LOGIN
+# ============================================================
 
 @router.post("/login", response_model=Token)
-async def login(request: Request, db: Session = Depends(get_db)):
+async def login(
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    # --------------------------------------------------------
+    # IP RATE LIMIT
+    # --------------------------------------------------------
+
+    client_ip = (
+        request.client.host
+        if request.client
+        else "unknown"
+    )
+
+    retry_after = _check_ip_rate_limit(client_ip)
+
+    if retry_after is not None:
+        raise HTTPException(
+            status_code=429,
+            detail="Zbyt wiele prób logowania. Spróbuj ponownie później.",
+            headers={
+                "Retry-After": str(retry_after)
+            },
+        )
+
+    # --------------------------------------------------------
+    # READ REQUEST
+    # --------------------------------------------------------
+
     username: str | None = None
     password: str | None = None
 
-    content_type = request.headers.get("content-type", "")
+    content_type = request.headers.get(
+        "content-type",
+        "",
+    )
+
     if "application/x-www-form-urlencoded" in content_type:
         form = await request.form()
+
         username = form.get("username")
         password = form.get("password")
+
     else:
         payload = await request.json()
+
         username = payload.get("username")
         password = payload.get("password")
 
     if not username or not password:
-        raise HTTPException(status_code=422, detail="Wymagane pola: username i password")
-
-    minutes_left = _is_locked(username)
-    if minutes_left is not None:
         raise HTTPException(
-            status_code=423,
-            detail=f"Konto zablokowane po wielu nieudanych próbach. Spróbuj ponownie za {minutes_left} min.",
+            status_code=422,
+            detail="Wymagane pola: username i password",
         )
 
-    db_user = get_user_by_username(db, username)
-    if not db_user or not verify_password(password, db_user.hashed_password):
-        is_now_locked, value = _register_failed_attempt(username)
-        if is_now_locked:
-            raise HTTPException(
-                status_code=423,
-                detail=f"Konto zostało zablokowane na {value} min po 3 błędnych próbach logowania.",
-            )
+    username = _normalize_username(username)
 
-        attempts_left = MAX_FAILED_LOGINS - value
+    # --------------------------------------------------------
+    # PROGRESSIVE DELAY
+    # --------------------------------------------------------
+
+    delay = _get_login_delay(username)
+
+    if delay > 0:
+
         raise HTTPException(
-            status_code=400,
-            detail=f"Nieprawidłowy login lub hasło. Pozostało prób: {attempts_left}.",
+            status_code=429,
+            detail="Zbyt wiele nieudanych prób logowania. Spróbuj ponownie później.",
+            headers={
+                "Retry-After": str(delay)
+            },
         )
 
-    _reset_login_attempts(username)
-    
+    # --------------------------------------------------------
+    # FIND USER
+    # --------------------------------------------------------
+
+    db_user = get_user_by_username(
+        db,
+        username,
+    )
+
+    # --------------------------------------------------------
+    # VERIFY PASSWORD
+    # --------------------------------------------------------
+
+    if (
+        not db_user
+        or not verify_password(
+            password,
+            db_user.hashed_password,
+        )
+    ):
+        _register_failed_login(username)
+
+
+        raise HTTPException(
+            status_code=401,
+            detail="Nieprawidłowy login lub hasło.",
+        )
+
+    # --------------------------------------------------------
+    # SUCCESS
+    # --------------------------------------------------------
+
+    _reset_failed_logins(username)
+
     token = create_access_token({
         "sub": db_user.username,
         "user_id": db_user.id,
-        "role": getattr(db_user, "role", "user")
+        "role": getattr(
+            db_user,
+            "role",
+            "user",
+        ),
     })
 
-    return {"access_token": token, "token_type": "bearer"}
+    return {
+        "access_token": token,
+        "token_type": "bearer",
+    }
