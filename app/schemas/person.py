@@ -2,7 +2,7 @@ from datetime import date
 from pydantic import BaseModel
 
 class PersonBase(BaseModel):
-    user_id: int
+    user_id: int | None = None
     first_name: str
     last_name: str
     gender: str
@@ -17,5 +17,5 @@ class PersonOut(PersonBase):
     avatar: str | None = None
 
     class Config:
-        from_attributes = True
+        allow_population_by_field_name = True
         orm_mode = True
