@@ -25,8 +25,13 @@ def create_payment(
     payment: PaymentCreate,
     db: Session = Depends(get_db),
     current_person: Person = Depends(get_current_person)):
-    payment_data = payment.model_copy(update={"from_person_id": current_person.id})
-    return new_payment(db, payment_data)
+    if payment.from_person_id == payment.to_person_id:
+        raise HTTPException(status_code=400, detail="Płatność musi być między dwiema różnymi osobami")
+    if current_person.id not in (payment.from_person_id, payment.to_person_id):
+        raise HTTPException(status_code=403, detail="Płatność musi dotyczyć zalogowanej osoby")
+    # Zachowujemy kierunek z formularza: przy wpływie nadawcą jest wybrana osoba,
+    # a odbiorcą zalogowana osoba; przy płatności wychodzącej odwrotnie.
+    return new_payment(db, payment)
 
 # Pobranie wszystkich płatności
 @router.get("/", response_model=List[PaymentOut])
@@ -56,10 +61,16 @@ def update_existing_payment(
     if current_person is None:
         raise HTTPException(status_code=409, detail="Konto nie ma powiązanego profilu osoby")
     existing = db.query(Payment).filter(Payment.id == payment_id).first()
-    if existing is None or (current_user.role != "trainer" and existing.from_person_id != current_person.id):
+    if existing is None or (
+        current_user.role != "trainer"
+        and current_person.id not in (existing.from_person_id, existing.to_person_id)
+    ):
         raise HTTPException(status_code=404, detail="Nie znaleziono płatności")
-    payment_payload = payment_data.model_copy(update={"from_person_id": current_person.id})
-    payment = update_payment(db, payment_id, payment_payload)
+    if payment_data.from_person_id == payment_data.to_person_id:
+        raise HTTPException(status_code=400, detail="Płatność musi być między dwiema różnymi osobami")
+    if current_person.id not in (payment_data.from_person_id, payment_data.to_person_id):
+        raise HTTPException(status_code=403, detail="Płatność musi dotyczyć zalogowanej osoby")
+    payment = update_payment(db, payment_id, payment_data)
 
     if not payment:
         raise HTTPException(status_code=404, detail="Nie znaleziono płatności")
