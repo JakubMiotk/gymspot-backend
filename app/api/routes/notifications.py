@@ -5,9 +5,10 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from app.core.deps import get_current_user
+from app.core.deps import get_current_person, get_current_user
 from app.db.session import get_db
 from app.models.user import User
+from app.models.person import Person
 from app.schemas.notification import (
     PushSubscriptionCreate,
     PushTestBroadcastRequest,
@@ -28,10 +29,11 @@ def subscribe_push(
     payload: PushSubscriptionCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    current_person: Person = Depends(get_current_person),
 ):
     upsert_push_subscription(
         db,
-        user_id=current_user.id,
+        person_id=current_person.id,
         endpoint=payload.endpoint,
         p256dh=payload.keys.p256dh,
         auth=payload.keys.auth,
@@ -44,6 +46,7 @@ def unsubscribe_push(
     payload: PushUnsubscribeRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    current_person: Person = Depends(get_current_person),
 ):
     deleted = delete_push_subscription_by_endpoint(db, payload.endpoint)
     if not deleted:

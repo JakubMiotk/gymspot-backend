@@ -3,8 +3,8 @@ from typing import Literal
 from pydantic import BaseModel
 
 class PaymentBase(BaseModel):
-    from_user_id: int
-    to_user_id: int 
+    from_person_id: int
+    to_person_id: int
     date: datetime
     value: int
     type: Literal[

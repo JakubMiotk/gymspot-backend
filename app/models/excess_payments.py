@@ -6,6 +6,6 @@ class ExcessPayment(Base):
     __tablename__ = "excess_payments"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    person_id = Column(Integer, ForeignKey("persons.id"), nullable=False)
     value= Column(Integer, nullable=False)
 

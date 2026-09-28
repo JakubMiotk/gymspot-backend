@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.db.session import get_db
 from app.models.user import User
+from app.models.person import Person
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 
@@ -53,3 +54,16 @@ def get_current_trainer(current_user: User = Depends(get_current_user)) -> User:
         )
 
     return current_user
+
+
+def get_current_person(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Person:
+    person = db.query(Person).filter(Person.user_id == current_user.id).first()
+    if person is None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Konto nie jest powiązane z profilem osoby",
+        )
+    return person

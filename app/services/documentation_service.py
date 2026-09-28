@@ -10,7 +10,7 @@ def create_documentation(db: Session, documentation_data: DocumentationCreate):
         exercise_video=documentation_data.exercise_video,
         exercise_type=documentation_data.exercise_type,
         exercise_body_parts=documentation_data.exercise_body_parts,
-        author=documentation_data.author
+        author_person_id=documentation_data.author_person_id
     )
     db.add(documentation)
     db.commit()
@@ -32,7 +32,7 @@ def update_documentation(db: Session, documentation_id: int, update_data: Docume
     documentation.exercise_video = update_data.exercise_video
     documentation.exercise_type = update_data.exercise_type
     documentation.exercise_body_parts = update_data.exercise_body_parts
-    documentation.author = update_data.author
+    documentation.author_person_id = update_data.author_person_id
 
     db.commit()
     db.refresh(documentation)

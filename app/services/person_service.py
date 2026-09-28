@@ -52,8 +52,8 @@ def delete_person(db: Session, person_id: int):
         return True
     return False
 
-def update_avatar(db: Session, user_id: int, filename: str):
-    person = db.query(Person).filter(Person.id == user_id).first()
+def update_avatar(db: Session, person_id: int, filename: str):
+    person = db.query(Person).filter(Person.id == person_id).first()
     if not person:
         return None
 

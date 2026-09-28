@@ -9,7 +9,7 @@ class Measurement(Base):
     __tablename__ = "measurements"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    person_id = Column(Integer, ForeignKey("persons.id"), nullable=False)
     date = Column(DateTime, nullable=False)
 
     weight = Column(DECIMAL(4, 1 ), nullable=False)

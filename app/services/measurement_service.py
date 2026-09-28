@@ -13,7 +13,7 @@ def create_measurement(
 ) -> Measurement:
 
     measurement = Measurement(
-        user_id=data.user_id,
+        person_id=data.person_id,
         date=data.date,
         weight=data.weight,
         height=data.height,
@@ -59,12 +59,12 @@ def get_measurement(db: Session, measurement_id: int):
     ).first()
 
 
-def get_user_measurements(
+def get_person_measurements(
     db: Session,
-    user_id: int) -> List[Measurement]:
+    person_id: int) -> List[Measurement]:
 
     return db.query(Measurement).filter(
-        Measurement.user_id == user_id).order_by(Measurement.date.desc()).all()
+        Measurement.person_id == person_id).order_by(Measurement.date.desc()).all()
 
 def update_measurement(
     db: Session,

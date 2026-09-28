@@ -4,5 +4,5 @@ from app.db.base import Base
 class Relation(Base):
     __tablename__ = "relations"
 
-    client_id = Column(Integer, ForeignKey("users.id"), primary_key=True)
-    trainer_id = Column(Integer, ForeignKey("users.id"), primary_key=True)
+    client_id = Column(Integer, ForeignKey("persons.id"), primary_key=True)
+    trainer_id = Column(Integer, ForeignKey("persons.id"), primary_key=True)

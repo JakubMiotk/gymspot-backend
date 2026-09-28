@@ -1,6 +1,5 @@
 from sqlalchemy.orm import Session
 from app.models.relation import Relation
-from app.core.security import get_password_hash, verify_password
 
 def create_relation(db: Session, client_id: int, trainer_id: int):
     relation = Relation(

@@ -11,16 +11,12 @@ router = APIRouter(tags=["relations"])
 @router.get("/trainer/{trainer_id}", response_model=List[RelationOut])
 def read_relations_for_trainer(trainer_id: int, db: Session = Depends(get_db)):
     relations = get_relation_by_trainer_id(db, trainer_id)
-    if not relations:
-        raise HTTPException(status_code=404, detail="Nie znaleziono relacji dla tego trenera")
     return relations
 
 # Pobierz relacje dla klienta
 @router.get("/client/{client_id}", response_model=List[RelationOut])
 def read_relations_for_client(client_id: int, db: Session = Depends(get_db)):
     relations = get_relation_by_client_id(db, client_id)
-    if not relations:
-        raise HTTPException(status_code=404, detail="Nie znaleziono relacji dla tego użytkownika")
     return relations
 
 

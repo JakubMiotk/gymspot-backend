@@ -3,6 +3,8 @@ from sqlalchemy.orm import Session
 from typing import List
 
 from app.db.session import get_db
+from app.core.deps import get_current_person
+from app.models.person import Person
 from app.schemas.training import TrainingCompletionPreview, TrainingCreate, TrainingDateUpdate, TrainingOut, TrainingStatusUpdate
 from app.services.training_service import (
     create_training,
@@ -22,8 +24,9 @@ router = APIRouter(tags=["trainings"])
 @router.post("/", response_model=TrainingOut)
 def create_new_training(
     training: TrainingCreate,
-    db: Session = Depends(get_db)):
-    return create_training(db, training)
+    db: Session = Depends(get_db),
+    current_person: Person = Depends(get_current_person)):
+    return create_training(db, training.model_copy(update={"trainer_id": current_person.id}))
 
 @router.get("/{training_id}", response_model=TrainingOut)
 def read_training(
@@ -47,10 +50,15 @@ def read_training_completion_preview(
 def update_existing_training(
     training_id: int,
     training: TrainingCreate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_person: Person = Depends(get_current_person),
 ):
     try:
-        updated_training = update_training(db, training_id, training)
+        updated_training = update_training(
+            db,
+            training_id,
+            training.model_copy(update={"trainer_id": current_person.id}),
+        )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 

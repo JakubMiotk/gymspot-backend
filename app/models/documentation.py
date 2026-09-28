@@ -12,4 +12,4 @@ class Documentation(Base):
     exercise_video = Column(String(255), nullable=True)
     exercise_type = Column(String(45), nullable=True)
     exercise_body_parts = Column(String(255), nullable=True)
-    author = Column(Integer, ForeignKey("users.id"), nullable=False)
+    author_person_id = Column(Integer, ForeignKey("persons.id"), nullable=False)

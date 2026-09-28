@@ -2,22 +2,22 @@ import os
 from sqlalchemy.orm import Session
 from app.schemas.debt import DebtCreate
 from app.models.debts import Debt
-from app.services.notification_service import send_push_notification_to_user
+from app.services.notification_service import send_push_notification_to_person
 
-def upsert_increment_debt(db: Session, user_id: int, amount: int):
-    debt = db.query(Debt).filter(Debt.user_id == user_id).first()
+def upsert_increment_debt(db: Session, person_id: int, amount: int):
+    debt = db.query(Debt).filter(Debt.person_id == person_id).first()
     if debt:
         debt.value += amount
     else:
-        debt = Debt(user_id=user_id, value=amount)
+        debt = Debt(person_id=person_id, value=amount)
         db.add(debt)
     db.flush()
     return debt
 
 
-def consume_debt(db: Session, user_id: int, amount: int) -> bool:
+def consume_debt(db: Session, person_id: int, amount: int) -> bool:
     """Zmniejsza dług o podaną kwotę. Zwraca True jeśli dług wystarczył, False wpp."""
-    debt = db.query(Debt).filter(Debt.user_id == user_id).first()
+    debt = db.query(Debt).filter(Debt.person_id == person_id).first()
     if not debt or debt.value < amount:
         return False
     debt.value -= amount
@@ -25,9 +25,9 @@ def consume_debt(db: Session, user_id: int, amount: int) -> bool:
     return True
 
 
-def consume_all_debt(db: Session, user_id: int) -> int:
+def consume_all_debt(db: Session, person_id: int) -> int:
     """Zeruje cały dług i zwraca skonsumowaną kwotę."""
-    debt = db.query(Debt).filter(Debt.user_id == user_id).first()
+    debt = db.query(Debt).filter(Debt.person_id == person_id).first()
     if not debt or debt.value <= 0:
         return 0
     consumed = debt.value
@@ -36,14 +36,14 @@ def consume_all_debt(db: Session, user_id: int) -> int:
     return consumed
 
 
-def get_current_debt_value(db: Session, user_id: int) -> int:
-    debt = db.query(Debt).filter(Debt.user_id == user_id).first()
+def get_current_debt_value(db: Session, person_id: int) -> int:
+    debt = db.query(Debt).filter(Debt.person_id == person_id).first()
     return debt.value if debt else 0
 
 
 def new_debt(db: Session, payment_data: DebtCreate):
     debt = Debt(
-        user_id=payment_data.user_id,
+        person_id=payment_data.person_id,
         value=payment_data.value
     )
     db.add(debt)
@@ -51,29 +51,29 @@ def new_debt(db: Session, payment_data: DebtCreate):
     db.refresh(debt)
 
     try:
-        send_push_notification_to_user(
+        send_push_notification_to_person(
             db,
-            user_id=debt.user_id,
+            person_id=debt.person_id,
             title="Nowy dług",
             body=f"Dodano dług: {debt.value} zł.",
-            url=f"/app/profile/{debt.user_id}/payments",
+            url=f"/app/profile/{debt.person_id}/payments",
         )
     except Exception:
         pass
 
     return debt
 
-def get_debt_by_user_id(db: Session, user_id: int):
-    return db.query(Debt).filter(Debt.user_id == user_id).all()
+def get_debt_by_person_id(db: Session, person_id: int):
+    return db.query(Debt).filter(Debt.person_id == person_id).all()
 
 def get_debts(db: Session):
     return db.query(Debt).all()
 
-def update_debt(db: Session, user_id: int, update_data: DebtCreate):
-    debt = db.query(Debt).filter(Debt.user_id == user_id).first()
+def update_debt(db: Session, debt_id: int, update_data: DebtCreate):
+    debt = db.query(Debt).filter(Debt.id == debt_id).first()
     if not debt:
         return None
-    debt.user_id = update_data.user_id
+    debt.person_id = update_data.person_id
     debt.value = update_data.value
 
     db.commit()

@@ -8,7 +8,7 @@ class DocumentationBase(BaseModel):
     exercise_video: Optional[str] = None
     exercise_type : Optional[str] = None
     exercise_body_parts : Optional[str] = None
-    author: int
+    author_person_id: int
 
 class DocumentationCreate(DocumentationBase):
     pass

@@ -4,9 +4,10 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy.orm import Session
 from typing import List, Optional
 
-from app.core.deps import get_current_user
+from app.core.deps import get_current_person, get_current_user
 from app.db.session import get_db
 from app.models.user import User
+from app.models.person import Person
 from app.schemas.documentation import DocumentationCreate, DocumentationOut
 from app.services.documentation_service import (
     create_documentation as create_documentation_service,
@@ -33,6 +34,7 @@ async def create_documentation(
     video: Optional[UploadFile] = File(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    current_person: Person = Depends(get_current_person),
 ):
     video_path: Optional[str] = None
     if video and video.filename:
@@ -51,7 +53,7 @@ async def create_documentation(
         exercise_video=video_path,
         exercise_type=exercise_type,
         exercise_body_parts=exercise_body_parts,
-        author=current_user.id,
+        author_person_id=current_person.id,
     )
     return create_documentation_service(db, doc_data)
 
@@ -79,6 +81,7 @@ async def update_existing_documentation(
     video: Optional[UploadFile] = File(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    current_person: Person = Depends(get_current_person),
 ):
     existing = get_documentation_by_id(db, doc_id)
     if not existing:
@@ -107,7 +110,7 @@ async def update_existing_documentation(
         exercise_video=video_path,
         exercise_type=exercise_type,
         exercise_body_parts=exercise_body_parts,
-        author=current_user.id,
+        author_person_id=current_person.id,
     )
     return update_documentation_service(db, doc_id, doc_data)
 

@@ -23,7 +23,7 @@ from app.services.debt_service import (
     consume_all_debt,
     get_current_debt_value
 )
-from app.services.notification_service import send_push_notification_to_user
+from app.services.notification_service import send_push_notification_to_person
 
 TRAINING_PRICES = {
     "personal": 80,
@@ -190,9 +190,9 @@ def create_training(db: Session, training_data: TrainingCreate):
 
     formatted_date = training.training_date.strftime("%d.%m.%Y %H:%M")
     try:
-        send_push_notification_to_user(
+        send_push_notification_to_person(
             db,
-            user_id=training.client_id,
+            person_id=training.client_id,
             title="Nowy trening",
             body=f"Dodano nowy trening na {formatted_date}.",
             url="/app/trainings",
@@ -320,7 +320,7 @@ def get_available_excess_for_training(db: Session, training_id: int):
 
     available_excess = (
         db.query(ExcessPayment)
-        .filter(ExcessPayment.user_id == training.client_id)
+        .filter(ExcessPayment.person_id == training.client_id)
         .all()
     )
 
@@ -362,8 +362,8 @@ def update_training_status(
                 if current_debt >= training_price:
                     consume_debt(db, training.client_id, training_price)
                     payment = Payment(
-                        from_user_id=training.client_id,
-                        to_user_id=training.trainer_id,
+                        from_person_id=training.client_id,
+                        to_person_id=training.trainer_id,
                         date=datetime.utcnow(),
                         value=training_price,
                         type="regulacja",
@@ -372,16 +372,16 @@ def update_training_status(
                 elif current_debt > 0:
                     consume_all_debt(db, training.client_id)
                     payment_regulacja = Payment(
-                        from_user_id=training.client_id,
-                        to_user_id=training.trainer_id,
+                        from_person_id=training.client_id,
+                        to_person_id=training.trainer_id,
                         date=datetime.utcnow(),
                         value=current_debt,
                         type="regulacja",
                     )
                     db.add(payment_regulacja)
                     payment_rest = Payment(
-                        from_user_id=training.client_id,
-                        to_user_id=training.trainer_id,
+                        from_person_id=training.client_id,
+                        to_person_id=training.trainer_id,
                         date=datetime.utcnow(),
                         value=training_price - current_debt,
                         type="payment",
@@ -389,8 +389,8 @@ def update_training_status(
                     db.add(payment_rest)
                 else:
                     payment = Payment(
-                        from_user_id=training.client_id,
-                        to_user_id=training.trainer_id,
+                        from_person_id=training.client_id,
+                        to_person_id=training.trainer_id,
                         date=datetime.utcnow(),
                         value=training_price,
                         type="payment",
@@ -398,8 +398,8 @@ def update_training_status(
                     db.add(payment)
             else:
                 payment = Payment(
-                    from_user_id=training.client_id,
-                    to_user_id=training.trainer_id,
+                    from_person_id=training.client_id,
+                    to_person_id=training.trainer_id,
                     date=datetime.utcnow(),
                     value=training_price,
                     type="payment",
@@ -428,9 +428,9 @@ def update_training_status(
 
         # Notification failure cannot block business flow of status update.
         try:
-            send_push_notification_to_user(
+            send_push_notification_to_person(
                 db,
-                user_id=training.client_id,
+                person_id=training.client_id,
                 title="Zmiana statusu treningu",
                 body=notification_body,
                 url="/app/trainings",

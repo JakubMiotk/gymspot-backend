@@ -9,7 +9,7 @@ from app.models.push_subscription import PushSubscription
 def upsert_push_subscription(
     db: Session,
     *,
-    user_id: int | None,
+    person_id: int,
     endpoint: str,
     p256dh: str,
     auth: str,
@@ -21,12 +21,12 @@ def upsert_push_subscription(
     )
 
     if subscription:
-        subscription.user_id = user_id
+        subscription.person_id = person_id
         subscription.p256dh = p256dh
         subscription.auth = auth
     else:
         subscription = PushSubscription(
-            user_id=user_id,
+            person_id=person_id,
             endpoint=endpoint,
             p256dh=p256dh,
             auth=auth,
@@ -70,18 +70,18 @@ def get_all_push_subscriptions(db: Session) -> list[PushSubscription]:
     return db.query(PushSubscription).all()
 
 
-def get_push_subscriptions_for_user(db: Session, user_id: int) -> list[PushSubscription]:
+def get_push_subscriptions_for_person(db: Session, person_id: int) -> list[PushSubscription]:
     return (
         db.query(PushSubscription)
-        .filter(PushSubscription.user_id == user_id)
+        .filter(PushSubscription.person_id == person_id)
         .all()
     )
 
 
-def send_push_notification_to_user(
+def send_push_notification_to_person(
     db: Session,
     *,
-    user_id: int,
+    person_id: int,
     title: str,
     body: str,
     url: str = "/app/",
@@ -110,7 +110,7 @@ def send_push_notification_to_user(
             "reason": "missing_pywebpush",
         }
 
-    subscriptions = get_push_subscriptions_for_user(db, user_id)
+    subscriptions = get_push_subscriptions_for_person(db, person_id)
     if not subscriptions:
         return {
             "total": 0,

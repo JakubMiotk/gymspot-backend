@@ -10,7 +10,7 @@ Decimal41 = Annotated[Decimal, Field(..., max_digits=4, decimal_places=1)]
 Decimal31 = Annotated[Decimal, Field(..., max_digits=3, decimal_places=1)]
 
 class MeasurementBase(BaseModel):
-    user_id: int
+    person_id: int
     date: datetime
     weight: Decimal41
     height: int  

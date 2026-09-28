@@ -3,7 +3,7 @@ from typing import Literal
 from pydantic import BaseModel
 
 class DebtBase(BaseModel):
-    user_id: int 
+    person_id: int
     value: int
 
 class DebtCreate(DebtBase):

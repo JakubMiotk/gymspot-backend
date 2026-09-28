@@ -2,25 +2,25 @@ import os
 from sqlalchemy.orm import Session
 from app.schemas.excess_payment import ExcessPaymentCreate
 from app.models.excess_payments import ExcessPayment 
-from app.services.notification_service import send_push_notification_to_user
+from app.services.notification_service import send_push_notification_to_person
 
 
-def upsert_increment_excess_payment(db: Session, user_id: int, amount: int):
-    excess_payment = db.query(ExcessPayment).filter(ExcessPayment.user_id == user_id).first()
+def upsert_increment_excess_payment(db: Session, person_id: int, amount: int):
+    excess_payment = db.query(ExcessPayment).filter(ExcessPayment.person_id == person_id).first()
 
     if excess_payment:
         excess_payment.value += amount
         return excess_payment
 
     excess_payment = ExcessPayment(
-        user_id=user_id,
+        person_id=person_id,
         value=amount
     )
     db.add(excess_payment)
     return excess_payment
 
-def consume_excess_payment(db: Session, user_id: int, amount: int):
-    excess_payment = db.query(ExcessPayment).filter(ExcessPayment.user_id == user_id).first()
+def consume_excess_payment(db: Session, person_id: int, amount: int):
+    excess_payment = db.query(ExcessPayment).filter(ExcessPayment.person_id == person_id).first()
 
     if not excess_payment or excess_payment.value < amount:
         return False
@@ -28,9 +28,9 @@ def consume_excess_payment(db: Session, user_id: int, amount: int):
     excess_payment.value -= amount
     return True
 
-def consume_all_excess(db: Session, user_id: int) -> int:
+def consume_all_excess(db: Session, person_id: int) -> int:
     """Zero out the user's excess and return the amount consumed."""
-    excess_payment = db.query(ExcessPayment).filter(ExcessPayment.user_id == user_id).first()
+    excess_payment = db.query(ExcessPayment).filter(ExcessPayment.person_id == person_id).first()
     if not excess_payment or excess_payment.value <= 0:
         return 0
     consumed = excess_payment.value
@@ -39,7 +39,7 @@ def consume_all_excess(db: Session, user_id: int) -> int:
 
 def new_excess_payment(db: Session, payment_data: ExcessPaymentCreate):
     excess_payment = ExcessPayment(
-        user_id=payment_data.user_id,
+        person_id=payment_data.person_id,
         value=payment_data.value
     )
     db.add(excess_payment)
@@ -47,20 +47,20 @@ def new_excess_payment(db: Session, payment_data: ExcessPaymentCreate):
     db.refresh(excess_payment)
 
     try:
-        send_push_notification_to_user(
+        send_push_notification_to_person(
             db,
-            user_id=excess_payment.user_id,
+            person_id=excess_payment.person_id,
             title="Nowa nadpłata",
             body=f"Dodano nadpłatę: {excess_payment.value} zł.",
-            url=f"/app/profile/{excess_payment.user_id}/payments",
+            url=f"/app/profile/{excess_payment.person_id}/payments",
         )
     except Exception:
         pass
 
     return excess_payment
 
-def get_excess_payment_by_user_id(db: Session, user_id: int):
-    return db.query(ExcessPayment).filter(ExcessPayment.user_id == user_id).all()
+def get_excess_payment_by_person_id(db: Session, person_id: int):
+    return db.query(ExcessPayment).filter(ExcessPayment.person_id == person_id).all()
 
 def get_excess_payments(db: Session):
     return db.query(ExcessPayment).all()
@@ -69,7 +69,7 @@ def update_excess_payment(db: Session, excess_payment_id: int, update_data: Exce
     excess_payment = db.query(ExcessPayment).filter(ExcessPayment.id == excess_payment_id).first()
     if not excess_payment:
         return None
-    excess_payment.user_id = update_data.user_id
+    excess_payment.person_id = update_data.person_id
     excess_payment.value = update_data.value
 
     db.commit()

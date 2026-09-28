@@ -24,8 +24,7 @@ def create_exercise(
     exercise: ExerciseCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)):
-    exercise_data = exercise.model_copy(update={"from_user_id": current_user.id})
-    return new_exercise(db, exercise_data)
+    return new_exercise(db, exercise)
 
 # Pobranie wszystkich ćwiczeń
 @router.get("/", response_model=List[ExerciseOut])
@@ -51,8 +50,7 @@ def update_existing_exercise(
     exercise_data: ExerciseCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)):
-    exercise_payload = exercise_data.model_copy(update={"from_user_id": current_user.id})
-    exercise = update_exercise(db, exercise_id, exercise_payload)
+    exercise = update_exercise(db, exercise_id, exercise_data)
 
     if not exercise:
         raise HTTPException(status_code=404, detail="Nie znaleziono ćwiczenia")
