@@ -21,11 +21,17 @@ from app.services.training_service import (
 
 router = APIRouter(tags=["trainings"])
 
+
+def _validate_client_person(db: Session, person_id: int) -> None:
+    if not db.query(Person.id).filter(Person.id == person_id).first():
+        raise HTTPException(status_code=404, detail="Nie znaleziono profilu podopiecznego")
+
 @router.post("/", response_model=TrainingOut)
 def create_new_training(
     training: TrainingCreate,
     db: Session = Depends(get_db),
     current_person: Person = Depends(get_current_person)):
+    _validate_client_person(db, training.client_id)
     return create_training(db, training.model_copy(update={"trainer_id": current_person.id}))
 
 @router.get("/{training_id}", response_model=TrainingOut)
@@ -54,6 +60,7 @@ def update_existing_training(
     current_person: Person = Depends(get_current_person),
 ):
     try:
+        _validate_client_person(db, training.client_id)
         updated_training = update_training(
             db,
             training_id,

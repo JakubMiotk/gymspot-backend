@@ -6,6 +6,7 @@ from app.schemas.training_exercise import TrainingExerciseCreate, TrainingExerci
 
 
 class TrainingBase(BaseModel):
+    # Both IDs are Person.id, never User.id.
     trainer_id: int
     client_id: int
     training_date: datetime
