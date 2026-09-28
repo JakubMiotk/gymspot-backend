@@ -6,10 +6,10 @@ class PersonBase(BaseModel):
     first_name: str
     last_name: str
     gender: str
-    height: float
-    weight: float
-    date_of_birth: date
-    city: str
+    height: float | None = None
+    weight: float | None = None
+    date_of_birth: date | None = None
+    city: str | None = None
     avatar: str | None = None
 
 class PersonOut(PersonBase):
@@ -18,3 +18,4 @@ class PersonOut(PersonBase):
 
     class Config:
         from_attributes = True
+        orm_mode = True
