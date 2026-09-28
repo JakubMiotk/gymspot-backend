@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
-from app.core.deps import get_current_user
+from app.core.deps import get_current_trainer, get_current_user
 from app.schemas.user import ChangePassword, UserOut, UserCreate
 from app.services.user_service import change_user_password, create_user, get_user_by_username, get_user_by_id, get_users
 from app.core.security import get_password_hash
@@ -29,12 +29,12 @@ def read_user(user_id: int, db: Session = Depends(get_db)):
     return user
 
 # Rejestracja użytkownika
-@router.post("/", response_model=UserOut)
+@router.post("/", response_model=UserOut, dependencies=[Depends(get_current_trainer)])
 def register_user(user: UserCreate, db: Session = Depends(get_db)):
     if get_user_by_username(db, user.username):
         raise HTTPException(status_code=400, detail="Nazwa użytkownika jest już zajęta")
 
-    return create_user(db, user.username, user.password, user.role)
+    return create_user(db, user.username, user.password)
 
 
 @router.post("/change-password")

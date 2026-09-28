@@ -1,11 +1,12 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 class UserBase(BaseModel):
     username: str
 
 class UserCreate(UserBase):
-    password: str
-    role: str
+    model_config = ConfigDict(extra="forbid")
+
+    password: str = Field(..., min_length=8)
 
 class UserLogin(UserBase):
     password: str

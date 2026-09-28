@@ -145,7 +145,6 @@ def register(
         db,
         user.username,
         user.password,
-        user.role,
     )
 
 

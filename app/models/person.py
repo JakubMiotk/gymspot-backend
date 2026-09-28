@@ -5,7 +5,7 @@ class Person(Base):
     __tablename__ = "persons"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), unique=True, nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), unique=True, nullable=True)
 
     first_name = Column(String(100), nullable=False)
     last_name = Column(String(100), nullable=False)
