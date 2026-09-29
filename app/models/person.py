@@ -16,3 +16,4 @@ class Person(Base):
     date_of_birth = Column(Date, nullable=True)
     city = Column(String(150), nullable=True)
     avatar = Column(String(255), nullable=True)
+    active = Column(Integer, nullable=False, default=1)

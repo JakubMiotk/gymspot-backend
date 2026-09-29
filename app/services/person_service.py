@@ -25,7 +25,7 @@ def get_person_by_user_id(db: Session, user_id: int):
     return db.query(Person).filter(Person.user_id == user_id).first()
 
 def get_persons(db: Session):
-    return db.query(Person).all()
+    return db.query(Person).filter(Person.active == True).all()
 
 def update_person(db: Session, person_id: int, update_data: PersonBase):
     person = db.query(Person).filter(Person.id == person_id).first()
@@ -38,6 +38,7 @@ def update_person(db: Session, person_id: int, update_data: PersonBase):
     person.weight = update_data.weight
     person.date_of_birth = update_data.date_of_birth
     person.city = update_data.city
+    person.active = update_data.active
 
     db.commit()
     db.refresh(person)
@@ -71,4 +72,11 @@ def update_avatar(db: Session, person_id: int, filename: str):
     db.commit()
     db.refresh(person)
     return person
+
+def deactivate_person(db: Session, person: Person):
+    person.active = False
+    db.add(person)
+    db.commit()
+    db.refresh(person)
+    return True
     

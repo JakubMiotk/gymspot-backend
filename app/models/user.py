@@ -8,4 +8,4 @@ class User(Base):
     username = Column(String(255), unique=True, index=True, nullable=False)
     hashed_password = Column(String(255), nullable=False)
     role = Column(String(50), default="user", nullable=False)
-    is_active = Column(Integer, default=1)
+    active = Column(Integer, nullable=False, default=1)

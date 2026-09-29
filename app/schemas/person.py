@@ -15,7 +15,9 @@ class PersonBase(BaseModel):
 class PersonOut(PersonBase):
     id: int
     avatar: str | None = None
+    active: bool
 
     class Config:
         orm_mode = True
+
         
