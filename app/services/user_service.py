@@ -21,7 +21,7 @@ def get_user_by_id(db: Session, user_id: int):
     return db.query(User).filter(User.id == user_id).first()
 
 def get_users(db: Session):
-    return db.query(User).filter(User.active == True).all()
+    return db.query(User).all()
 
 def change_user_password(db: Session, user: User, old_password: str, new_password: str):
     # Weryfikacja starego hasła

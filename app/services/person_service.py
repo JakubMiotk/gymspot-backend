@@ -25,7 +25,7 @@ def get_person_by_user_id(db: Session, user_id: int):
     return db.query(Person).filter(Person.user_id == user_id).first()
 
 def get_persons(db: Session):
-    return db.query(Person).filter(Person.active == True).all()
+    return db.query(Person).all()
 
 def update_person(db: Session, person_id: int, update_data: PersonBase):
     person = db.query(Person).filter(Person.id == person_id).first()
