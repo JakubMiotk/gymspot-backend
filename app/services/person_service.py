@@ -92,4 +92,13 @@ def activate_person(db: Session, person_id: int):
     db.commit()
     db.refresh(person)
     return True
+
+def link_person(db: Session, user_id: int, linked_person_id: int | None):
+    person = db.query(Person).filter(Person.id == linked_person_id).first()
+    if not person:
+        return None
+    person.user_id = user_id
+    db.commit()
+    db.refresh(person)
+    return person
     
