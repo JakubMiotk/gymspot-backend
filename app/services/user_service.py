@@ -41,3 +41,10 @@ def deactivate_user(db: Session, user: User):
     db.commit()
     db.refresh(user)
     return True
+
+def activate_user(db: Session, user: User):
+    user.active = True
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return True

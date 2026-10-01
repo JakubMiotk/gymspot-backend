@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from typing import List
 from app.core.deps import get_current_person, get_current_user
 from app.schemas.person import PersonBase, PersonOut
-from app.services.person_service import deactivate_person, get_person_by_user_id, new_person, get_persons, delete_person, update_person, update_avatar
+from app.services.person_service import activate_person, deactivate_person, get_person_by_user_id, new_person, get_persons, delete_person, update_person, update_avatar
 from app.core.security import get_password_hash
 from app.db.session import get_db
 from app.models.person import Person
@@ -141,3 +141,15 @@ def deactivate_person_endpoint(
         raise HTTPException(status_code=404, detail="Nie znaleziono osoby")
     deactivate_person(db, person)
     return {"msg": "Osoba została dezaktywowana"}
+    
+@router.post("/activate/{person_id}")
+def activate_person_endpoint(
+    person_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    person = db.query(Person).filter(Person.id == person_id).first()
+    if not person or (current_user.role != "trainer" and person.user_id != current_user.id):
+        raise HTTPException(status_code=404, detail="Nie znaleziono osoby")
+    activate_person(db, person)
+    return {"msg": "Osoba została aktywowana"}

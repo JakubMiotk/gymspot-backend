@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from typing import List
 from app.core.deps import get_current_trainer, get_current_user
 from app.schemas.user import ChangePassword, UserOut, UserCreate
-from app.services.user_service import change_user_password, create_user, get_user_by_username, get_user_by_id, get_users, deactivate_user
+from app.services.user_service import change_user_password, create_user, get_user_by_username, get_user_by_id, get_users, deactivate_user, activate_user
 from app.core.security import get_password_hash
 from app.db.session import get_db
 from app.models.user import User
@@ -58,3 +58,11 @@ def deactivate_user_endpoint(user_id: int, db: Session = Depends(get_db), curren
         raise HTTPException(status_code=404, detail="Nie znaleziono użytkownika")
     deactivate_user(db, user)
     return {"msg": "Użytkownik został dezaktywowany"}
+
+@router.post("/activate/{user_id}")
+def activate_user_endpoint(user_id: int, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+    user = get_user_by_id(db, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="Nie znaleziono użytkownika")
+    activate_user(db, user)
+    return {"msg": "Użytkownik został aktywowany"}

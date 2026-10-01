@@ -79,4 +79,11 @@ def deactivate_person(db: Session, person: Person):
     db.commit()
     db.refresh(person)
     return True
+
+def activate_person(db: Session, person: Person):
+    person.active = True
+    db.add(person)
+    db.commit()
+    db.refresh(person)
+    return True
     
