@@ -236,8 +236,14 @@ async def login(
     )
 
     # --------------------------------------------------------
-    # VERIFY PASSWORD
+    # VERIFY ACCOUNT
     # --------------------------------------------------------
+
+    if not db_user.active:
+        raise HTTPException(
+            status_code=403,
+            detail="Konto jest nieaktywne.",
+        )
 
     if (
         not db_user
@@ -253,6 +259,7 @@ async def login(
             status_code=401,
             detail="Nieprawidłowy login lub hasło.",
         )
+
 
     # --------------------------------------------------------
     # SUCCESS
