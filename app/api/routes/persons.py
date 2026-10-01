@@ -154,17 +154,17 @@ def activate_person_endpoint(
     activate_person(db, person_id)
     return {"msg": "Osoba została aktywowana"}
 
-@router.post("/link/{person_id}")
+@router.post("/link/{user_id}")
 def link_person_endpoint(
-    person_id: int,
+    user_id: int,
     linked_person_id: int | None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    person = db.query(Person).filter(Person.id == person_id).first()
+    person = db.query(Person).filter(Person.id == linked_person_id).first()
     if not person or (current_user.role != "trainer" and person.user_id != current_user.id):
         raise HTTPException(status_code=404, detail="Nie znaleziono osoby")
-    linked_person = link_person(db, user_id=current_user.id, linked_person_id=linked_person_id)
+    linked_person = link_person(db, user_id=user_id, linked_person_id=linked_person_id)
     if not linked_person:
         raise HTTPException(status_code=500, detail="Nie udało się powiązać osoby")
     return linked_person
