@@ -139,7 +139,7 @@ def deactivate_person_endpoint(
     person = db.query(Person).filter(Person.id == person_id).first()
     if not person or (current_user.role != "trainer" and person.user_id != current_user.id):
         raise HTTPException(status_code=404, detail="Nie znaleziono osoby")
-    deactivate_person(db, person)
+    deactivate_person(db, person_id)
     return {"msg": "Osoba została dezaktywowana"}
     
 @router.post("/activate/{person_id}")
@@ -151,5 +151,5 @@ def activate_person_endpoint(
     person = db.query(Person).filter(Person.id == person_id).first()
     if not person or (current_user.role != "trainer" and person.user_id != current_user.id):
         raise HTTPException(status_code=404, detail="Nie znaleziono osoby")
-    activate_person(db, person)
+    activate_person(db, person_id)
     return {"msg": "Osoba została aktywowana"}

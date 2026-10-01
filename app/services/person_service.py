@@ -73,14 +73,20 @@ def update_avatar(db: Session, person_id: int, filename: str):
     db.refresh(person)
     return person
 
-def deactivate_person(db: Session, person: Person):
+def deactivate_person(db: Session, person_id: int):
+    person = db.query(Person).filter(Person.id == person_id).first()
+    if not person:
+        return False
     person.active = False
     db.add(person)
     db.commit()
     db.refresh(person)
     return True
 
-def activate_person(db: Session, person: Person):
+def activate_person(db: Session, person_id: int):
+    person = db.query(Person).filter(Person.id == person_id).first()
+    if not person:
+        return False
     person.active = True
     db.add(person)
     db.commit()

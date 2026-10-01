@@ -56,7 +56,7 @@ def deactivate_user_endpoint(user_id: int, db: Session = Depends(get_db), curren
     user = get_user_by_id(db, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="Nie znaleziono użytkownika")
-    deactivate_user(db, user)
+    deactivate_user(db, user_id)
     return {"msg": "Użytkownik został dezaktywowany"}
 
 @router.post("/activate/{user_id}")
@@ -64,5 +64,5 @@ def activate_user_endpoint(user_id: int, db: Session = Depends(get_db), current_
     user = get_user_by_id(db, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="Nie znaleziono użytkownika")
-    activate_user(db, user)
+    activate_user(db, user_id)
     return {"msg": "Użytkownik został aktywowany"}

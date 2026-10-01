@@ -35,14 +35,20 @@ def change_user_password(db: Session, user: User, old_password: str, new_passwor
     db.refresh(user)
     return True
 
-def deactivate_user(db: Session, user: User):
+def deactivate_user(db: Session, user_id: int):
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        return False
     user.active = False
     db.add(user)
     db.commit()
     db.refresh(user)
     return True
 
-def activate_user(db: Session, user: User):
+def activate_user(db: Session, user_id: int):
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        return False
     user.active = True
     db.add(user)
     db.commit()
