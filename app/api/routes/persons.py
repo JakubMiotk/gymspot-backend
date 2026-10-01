@@ -3,8 +3,8 @@ import uuid
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from sqlalchemy.orm import Session
 from typing import List
-from app.core.deps import get_current_person, get_current_user
-from app.schemas.person import PersonBase, PersonOut
+from app.core.deps import get_current_person, get_current_trainer, get_current_user
+from app.schemas.person import PersonBase, PersonLink, PersonOut
 from app.services.person_service import activate_person, deactivate_person, get_person_by_user_id, link_person, new_person, get_persons, delete_person, update_person, update_avatar
 from app.core.security import get_password_hash
 from app.db.session import get_db
@@ -154,17 +154,28 @@ def activate_person_endpoint(
     activate_person(db, person_id)
     return {"msg": "Osoba została aktywowana"}
 
-@router.post("/link/{user_id}+{linked_person_id}")
+@router.post("/link/{user_id}")
 def link_person_endpoint(
     user_id: int,
-    linked_person_id: int | None,
+    updatedData: PersonLink,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_trainer),
 ):
-    person = db.query(Person).filter(Person.id == linked_person_id).first()
-    if not person or (current_user.role != "trainer" and person.user_id != current_user.id):
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Nie znaleziono użytkownika")
+
+    existing_link = db.query(Person).filter(Person.user_id == user_id).first()
+    if existing_link:
+        raise HTTPException(status_code=409, detail="Konto ma już powiązany profil")
+
+    person = db.query(Person).filter(Person.id == updatedData.linked_person_id).first()
+    if not person:
         raise HTTPException(status_code=404, detail="Nie znaleziono osoby")
-    linked_person = link_person(db, user_id=user_id, linked_person_id=linked_person_id)
+    if person.user_id is not None:
+        raise HTTPException(status_code=409, detail="Profil osoby jest już powiązany z kontem")
+
+    linked_person = link_person(db, user_id=user_id, updatedData=updatedData)
     if not linked_person:
         raise HTTPException(status_code=500, detail="Nie udało się powiązać osoby")
     return linked_person

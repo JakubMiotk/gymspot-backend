@@ -94,7 +94,7 @@ def activate_person(db: Session, person_id: int):
     db.refresh(person)
     return True
 
-def link_person(db: Session, user_id: int, updatedData: PersonLink | None):
+def link_person(db: Session, user_id: int, updatedData: PersonLink):
     person = db.query(Person).filter(Person.id == updatedData.linked_person_id).first()
     if not person:
         return None
