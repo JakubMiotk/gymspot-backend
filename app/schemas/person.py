@@ -20,4 +20,5 @@ class PersonOut(PersonBase):
     class Config:
         orm_mode = True
 
-        
+class PersonLink(BaseModel):
+    linked_person_id: int 

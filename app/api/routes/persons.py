@@ -154,7 +154,7 @@ def activate_person_endpoint(
     activate_person(db, person_id)
     return {"msg": "Osoba została aktywowana"}
 
-@router.post("/link/{user_id}")
+@router.post("/link/{user_id}+{linked_person_id}")
 def link_person_endpoint(
     user_id: int,
     linked_person_id: int | None,

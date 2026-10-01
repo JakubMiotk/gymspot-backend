@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from app.models.person import Person
 from app.core.security import get_password_hash, verify_password
 from app.schemas.person import PersonBase
+from app.schemas.person import PersonLink
 
 def new_person(db: Session, person_data: PersonBase):
     person = Person(
@@ -93,8 +94,8 @@ def activate_person(db: Session, person_id: int):
     db.refresh(person)
     return True
 
-def link_person(db: Session, user_id: int, linked_person_id: int | None):
-    person = db.query(Person).filter(Person.id == linked_person_id).first()
+def link_person(db: Session, user_id: int, updatedData: PersonLink | None):
+    person = db.query(Person).filter(Person.id == updatedData.linked_person_id).first()
     if not person:
         return None
     person.user_id = user_id
